@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.out
+*.exe
+
+# Editor files
+.vscode/
+*.swp
+
+# OS-specific clutter
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*~
