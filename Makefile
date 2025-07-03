@@ -5,7 +5,6 @@ CFLAGS = -Wall -Wextra -Iinclude
 # Directories
 SRC_DIR = src
 OBJ_DIR = build
-TEST_DIR = tests
 DEMO_DIR = visual_tests/demo
 
 # Files
@@ -19,23 +18,27 @@ all: $(TARGET) $(DEMO)
 
 # Static library
 $(TARGET): $(OBJS)
-    ar rcs $@ $^
+	ar rcs $@ $^
 
 # Object files
 $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
-    @mkdir -p $(OBJ_DIR)
-    $(CC) $(CFLAGS) -c $< -o $@
+	@mkdir -p $(OBJ_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 # Demo build
 $(DEMO): $(DEMO_DIR)/main.c $(TARGET)
-    $(CC) $(CFLAGS) $^ -o $@
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+
+# Build test_math from tests/test_math.c and math3d.c
+test_math: tests/test_math.c src/math3d.c
+	$(CC) $(CFLAGS) -Iinclude $^ -o $@ -lm
 
 # Run demo
 run: $(DEMO)
-    ./$(DEMO)
+	./$(DEMO)
 
 # Clean build artifacts
 clean:
-    rm -rf $(OBJ_DIR)
+	rm -rf $(OBJ_DIR)
 
 .PHONY: all clean run
