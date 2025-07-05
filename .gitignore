@@ -15,3 +15,7 @@ Thumbs.db
 
 # Temporary files
 *~
+
+# Ignore output frames and gifs
+*.pgm
+*.gif
