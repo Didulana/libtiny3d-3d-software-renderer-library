@@ -41,4 +41,16 @@ run: $(DEMO)
 clean:
 	rm -rf $(OBJ_DIR)
 
+# Build test_pipeline from tests/test_pipeline.c and math3d.c
+test_pipeline: tests/test_pipeline.c src/math3d.c
+	$(CC) $(CFLAGS) $^ -o $@ -lm
+
+test_pipeline: tests/test_pipeline.c src/math3d.c
+	$(CC) $(CFLAGS) -Iinclude $^ -o $@ -lm
+
+clean:
+	rm -f *.o test_pipeline triangle.pgm
+
+
+
 .PHONY: all clean run
