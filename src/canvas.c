@@ -1,108 +1,86 @@
-// src/canvas.c
-
 #include <stdlib.h>
+#include <stdio.h>
 #include <math.h>
 #include "canvas.h"
-#include <stdio.h>
 
-
-canvas_t *create_canvas(int width, int height) {
-    canvas_t *canvas = malloc(sizeof(canvas_t));
+void canvas_init(canvas_t* canvas, int width, int height) {
     canvas->width = width;
     canvas->height = height;
-
-    // Allocate pixel buffer
-    canvas->pixels = malloc(sizeof(float *) * height);
-    for (int y = 0; y < height; y++) {
-        canvas->pixels[y] = calloc(width, sizeof(float)); // Initializes to 0.0
-    }
-
-    return canvas;
+    canvas->pixels = (float*)calloc(width * height, sizeof(float));
 }
 
-void free_canvas(canvas_t *canvas) {
-    for (int y = 0; y < canvas->height; y++) {
-        free(canvas->pixels[y]);
-    }
-    free(canvas->pixels);
-    free(canvas);
-}
-
-void draw_line_f(canvas_t *canvas, float x0, float y0, float x1, float y1, float thickness) {
-    float dx = x1 - x0;
-    float dy = y1 - y0;
-    float length = fmaxf(fabsf(dx), fabsf(dy));
-
-    if (length == 0.0f) return;
-
-    float step_x = dx / length;
-    float step_y = dy / length;
-    float radius = thickness / 2.0f;
-
-    for (float t = 0; t <= length; t += 1.0f) {
-        float cx = x0 + step_x * t;
-        float cy = y0 + step_y * t;
-
-        // Stamp a circle of pixels around this center
-        for (int dy = -(int)radius; dy <= (int)radius; dy++) {
-            for (int dx = -(int)radius; dx <= (int)radius; dx++) {
-                float dist = sqrtf(dx * dx + dy * dy);
-                if (dist <= radius) {
-                    float falloff = 1.0f - (dist / radius); // Soft edge
-                    set_pixel_f(canvas, cx + dx, cy + dy, falloff);
-                }
-            }
-        }
+void canvas_clear(canvas_t* canvas, float value) {
+    int total = canvas->width * canvas->height;
+    for (int i = 0; i < total; i++) {
+        canvas->pixels[i] = value;
     }
 }
 
+void set_pixel_f(canvas_t* canvas, float x, float y, float intensity) {
+    if (intensity <= 0.0f) return;
 
-void set_pixel_f(canvas_t *canvas, float x, float y, float intensity) {
     int xi = (int)floorf(x);
     int yi = (int)floorf(y);
 
-    float xf = x - xi;
-    float yf = y - yi;
+    float fx = x - xi;
+    float fy = y - yi;
 
-    // Bilinear weights
-    float w00 = (1 - xf) * (1 - yf);
-    float w10 = xf * (1 - yf);
-    float w01 = (1 - xf) * yf;
-    float w11 = xf * yf;
+    float w00 = (1 - fx) * (1 - fy);
+    float w10 = fx * (1 - fy);
+    float w01 = (1 - fx) * fy;
+    float w11 = fx * fy;
 
-    // Apply to 4 surrounding pixels if they’re inside bounds
-    if (xi >= 0 && xi < canvas->width && yi >= 0 && yi < canvas->height)
-        canvas->pixels[yi][xi] += intensity * w00;
+    int w = canvas->width;
+    int h = canvas->height;
 
-    if (xi + 1 < canvas->width && yi >= 0 && yi < canvas->height)
-        canvas->pixels[yi][xi + 1] += intensity * w10;
-
-    if (xi >= 0 && yi + 1 < canvas->height)
-        canvas->pixels[yi + 1][xi] += intensity * w01;
-
-    if (xi + 1 < canvas->width && yi + 1 < canvas->height)
-        canvas->pixels[yi + 1][xi + 1] += intensity * w11;
+    if (xi >= 0 && yi >= 0 && xi < w && yi < h)
+        canvas->pixels[yi * w + xi] += intensity * w00;
+    if (xi + 1 >= 0 && yi >= 0 && xi + 1 < w && yi < h)
+        canvas->pixels[yi * w + (xi + 1)] += intensity * w10;
+    if (xi >= 0 && yi + 1 >= 0 && xi < w && yi + 1 < h)
+        canvas->pixels[(yi + 1) * w + xi] += intensity * w01;
+    if (xi + 1 >= 0 && yi + 1 >= 0 && xi + 1 < w && yi + 1 < h)
+        canvas->pixels[(yi + 1) * w + (xi + 1)] += intensity * w11;
 }
 
-#include <stdio.h>
+void draw_line_f(canvas_t* canvas, float x0, float y0, float x1, float y1, float thickness) {
+    float dx = x1 - x0;
+    float dy = y1 - y0;
+    float length = hypotf(dx, dy);
+    if (length == 0.0f) return;
 
-void canvas_to_pgm(canvas_t *canvas, const char *filename) {
-    FILE *fp = fopen(filename, "w");
-    if (!fp) {
-        perror("fopen");
-        return;
+    float step = 1.0f / length;
+    float nx = -dy / length;
+    float ny = dx / length;
+
+    for (float t = 0.0f; t <= 1.0f; t += step) {
+        float cx = x0 + t * dx;
+        float cy = y0 + t * dy;
+        for (float d = -thickness / 2.0f; d <= thickness / 2.0f; d += 0.25f) {
+            float px = cx + nx * d;
+            float py = cy + ny * d;
+            float falloff = 1.0f - fabsf(d) / (thickness / 2.0f);
+            set_pixel_f(canvas, px, py, falloff);
+        }
     }
+}
 
-    fprintf(fp, "P2\n%d %d\n255\n", canvas->width, canvas->height);
+void canvas_write_to_pgm(canvas_t* canvas, const char* filename) {
+    FILE* f = fopen(filename, "w");
+    if (!f) return;
 
+    fprintf(f, "P2\n%d %d\n255\n", canvas->width, canvas->height);
     for (int y = 0; y < canvas->height; y++) {
         for (int x = 0; x < canvas->width; x++) {
-            float value = canvas->pixels[y][x];
-            int pixel = (int)(255.0f * fminf(value, 1.0f)); // Clamp to [0,1]
-            fprintf(fp, "%d ", pixel);
+            float v = canvas->pixels[y * canvas->width + x];
+            int pixel = (int)(fminf(fmaxf(v, 0.0f), 1.0f) * 255);
+            fprintf(f, "%d ", pixel);
         }
-        fprintf(fp, "\n");
+        fprintf(f, "\n");
     }
+    fclose(f);
+}
 
-    fclose(fp);
+void canvas_free(canvas_t* canvas) {
+    free(canvas->pixels);
 }
