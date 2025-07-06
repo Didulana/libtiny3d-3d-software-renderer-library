@@ -4,13 +4,13 @@
 typedef struct {
     int width;
     int height;
-    float* pixels;
+    float **pixels;
 } canvas_t;
 
-void canvas_init(canvas_t* c, int width, int height);
-void canvas_clear(canvas_t* c, float val);
-void canvas_write_to_pgm(canvas_t* c, const char* filename);
-void canvas_free(canvas_t* c);
-void draw_line_f(canvas_t* c, float x0, float y0, float x1, float y1, float thickness);
+canvas_t *create_canvas(int width, int height);
+void free_canvas(canvas_t *canvas);
+void set_pixel_f(canvas_t *canvas, float x, float y, float intensity);
+void draw_line_f(canvas_t *canvas, float x0, float y0, float x1, float y1, float thickness);
+void canvas_to_pgm(canvas_t *canvas, const char *filename);
 
 #endif
