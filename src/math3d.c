@@ -127,3 +127,16 @@ void mat4_frustum_asymmetric(mat4_t* out, float l, float r, float b, float t, fl
     out->m[3][2] = -1.0f;
     out->m[3][3] = 0.0f;
 }
+
+void mat4_multiply(mat4_t *out, const mat4_t *a, const mat4_t *b) {
+    mat4_t result;
+    for (int r = 0; r < 4; r++) {
+        for (int c = 0; c < 4; c++) {
+            result.m[r][c] = 0.0f;
+            for (int k = 0; k < 4; k++) {
+                result.m[r][c] += a->m[r][k] * b->m[k][c];
+            }
+        }
+    }
+    *out = result;
+}

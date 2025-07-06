@@ -23,5 +23,6 @@ void mat4_translate(mat4_t* out, vec3_t v);
 void mat4_scale(mat4_t* out, vec3_t s);
 void mat4_rotate_xyz(mat4_t* out, vec3_t angles);
 void mat4_frustum_asymmetric(mat4_t* out, float l, float r, float b, float t, float n, float f);
+void mat4_multiply(mat4_t *out, const mat4_t *a, const mat4_t *b);
 
 #endif
