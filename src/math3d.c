@@ -16,7 +16,7 @@ vec3_t vec3_from_spherical(float r, float theta, float phi) {
 }
 
 vec3_t vec3_normalize_fast(vec3_t v) {
-    float len_squared = v.x*v.x + v.y*v.y + v.z*v.z;
+    float len_squared = v.x * v.x + v.y * v.y + v.z * v.z;
     float xhalf = 0.5f * len_squared;
     int32_t i = *(int32_t*)&len_squared;
     i = 0x5f3759df - (i >> 1);  // Fast inverse square root
@@ -30,26 +30,29 @@ vec3_t vec3_normalize_fast(vec3_t v) {
 }
 
 vec3_t vec3_slerp(vec3_t a, vec3_t b, float t) {
-    float dot = fmaxf(fminf(a.x*b.x + a.y*b.y + a.z*b.z, 1.0f), -1.0f);
+    float dot = fmaxf(fminf(a.x * b.x + a.y * b.y + a.z * b.z, 1.0f), -1.0f);
     float theta = acosf(dot) * t;
 
-    vec3_t r;
-    r.x = b.x - a.x * dot;
-    r.y = b.y - a.y * dot;
-    r.z = b.z - a.z * dot;
-    r.r = r.theta = r.phi = 0.0f;
+    vec3_t r = {
+        b.x - a.x * dot,
+        b.y - a.y * dot,
+        b.z - a.z * dot,
+        0, 0, 0
+    };
 
     float len = sqrtf(r.x*r.x + r.y*r.y + r.z*r.z);
     if (len > 0.0f) {
-        r.x /= len; r.y /= len; r.z /= len;
+        r.x /= len;
+        r.y /= len;
+        r.z /= len;
     }
 
-    vec3_t result;
-    result.x = a.x * cosf(theta) + r.x * sinf(theta);
-    result.y = a.y * cosf(theta) + r.y * sinf(theta);
-    result.z = a.z * cosf(theta) + r.z * sinf(theta);
-    result.r = result.theta = result.phi = 0.0f;
-    return result;
+    return (vec3_t){
+        a.x * cosf(theta) + r.x * sinf(theta),
+        a.y * cosf(theta) + r.y * sinf(theta),
+        a.z * cosf(theta) + r.z * sinf(theta),
+        0, 0, 0
+    };
 }
 
 vec3_t vec3_project(vec3_t p, mat4_t* m) {
@@ -95,22 +98,22 @@ void mat4_rotate_xyz(mat4_t* out, vec3_t angles) {
     out->m[0][0] = cy * cz;
     out->m[0][1] = -cy * sz;
     out->m[0][2] = sy;
-    out->m[0][3] = 0.0f;
+    out->m[0][3] = 0;
 
     out->m[1][0] = sx * sy * cz + cx * sz;
     out->m[1][1] = -sx * sy * sz + cx * cz;
     out->m[1][2] = -sx * cy;
-    out->m[1][3] = 0.0f;
+    out->m[1][3] = 0;
 
     out->m[2][0] = -cx * sy * cz + sx * sz;
     out->m[2][1] = cx * sy * sz + sx * cz;
     out->m[2][2] = cx * cy;
-    out->m[2][3] = 0.0f;
+    out->m[2][3] = 0;
 
-    out->m[3][0] = 0.0f;
-    out->m[3][1] = 0.0f;
-    out->m[3][2] = 0.0f;
-    out->m[3][3] = 1.0f;
+    out->m[3][0] = 0;
+    out->m[3][1] = 0;
+    out->m[3][2] = 0;
+    out->m[3][3] = 1;
 }
 
 void mat4_frustum_asymmetric(mat4_t* out, float l, float r, float b, float t, float n, float f) {
