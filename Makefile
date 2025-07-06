@@ -9,6 +9,9 @@ demo: visual_tests/demo/main.c src/canvas.c
 test_math: tests/test_math.c src/math3d.c
 	$(CC) $(CFLAGS) -Iinclude $^ -o build/test_math -lm
 
+demo: visual_tests/demo/main.c src/canvas.c src/math3d.c src/renderer.c
+	$(CC) $(CFLAGS) -Iinclude $^ -o build/demo -lm
+
 run:
 	./build/demo
 

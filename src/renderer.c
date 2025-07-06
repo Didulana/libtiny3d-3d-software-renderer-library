@@ -1,40 +1,35 @@
 #include "renderer.h"
-#include <stdbool.h>
+#include <math.h>
 
-bool clip_to_circular_viewport(canvas_t* canvas, int x, int y) {
+vec3_t project_vertex(vec3_t point, mat4_t *model, mat4_t *view, mat4_t *proj) {
+    vec3_t world = vec3_project(point, model);
+    vec3_t camera = vec3_project(world, view);
+    return vec3_project(camera, proj);
+}
+
+int clip_to_circular_viewport(canvas_t *canvas, float x, float y) {
     float cx = canvas->width / 2.0f;
     float cy = canvas->height / 2.0f;
     float dx = x - cx;
     float dy = y - cy;
-    float dist_sq = dx*dx + dy*dy;
-    float r = (canvas->width < canvas->height ? canvas->width : canvas->height) / 2.0f;
-    return dist_sq < r * r;
+    float radius = fminf(cx, cy);
+    return (dx * dx + dy * dy <= radius * radius);
 }
 
+void render_wireframe(canvas_t *canvas, vec3_t *vertices, int (*edges)[2],
+                      int vertex_count, int edge_count,
+                      mat4_t *model, mat4_t *view, mat4_t *proj) {
+    for (int i = 0; i < edge_count; i++) {
+        vec3_t p1 = project_vertex(vertices[edges[i][0]], model, view, proj);
+        vec3_t p2 = project_vertex(vertices[edges[i][1]], model, view, proj);
 
-void project_vertex(vec3_t in, vec3_t* out, transform_t* xf) {
-    vec3_t world = vec3_project(in, &xf->model);
-    vec3_t ndc   = vec3_project(world, &xf->proj);
-    *out = ndc;
-}
-
-void render_wireframe(canvas_t* canvas, mesh_t* mesh, transform_t* xf, float thickness) {
-    for (int i = 0; i < mesh->edge_count; i++) {
-        vec3_t a = mesh->vertices[mesh->edges[i][0]];
-        vec3_t b = mesh->vertices[mesh->edges[i][1]];
-
-        vec3_t pa, pb;
-        project_vertex(a, &pa, xf);
-        project_vertex(b, &pb, xf);
-
-        int x0 = (int)((pa.x * 0.5f + 0.5f) * canvas->width);
-        int y0 = (int)((1.0f - (pa.y * 0.5f + 0.5f)) * canvas->height);
-        int x1 = (int)((pb.x * 0.5f + 0.5f) * canvas->width);
-        int y1 = (int)((1.0f - (pb.y * 0.5f + 0.5f)) * canvas->height);
+        float x0 = (p1.x * 0.5f + 0.5f) * canvas->width;
+        float y0 = (1.0f - (p1.y * 0.5f + 0.5f)) * canvas->height;
+        float x1 = (p2.x * 0.5f + 0.5f) * canvas->width;
+        float y1 = (1.0f - (p2.y * 0.5f + 0.5f)) * canvas->height;
 
         if (clip_to_circular_viewport(canvas, x0, y0) || clip_to_circular_viewport(canvas, x1, y1)) {
-            draw_line_f(canvas, x0, y0, x1, y1, thickness);
+            draw_line_f(canvas, x0, y0, x1, y1, 1.5f);
         }
     }
 }
-
