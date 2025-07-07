@@ -1,19 +1,43 @@
 CC = gcc
-CFLAGS = -Wall -Iinclude -lm
+CFLAGS = -Wall -Wextra -O2 -Iinclude
 
-all: demo
+SRC_DIR = src
+BUILD_DIR = build
 
-demo: visual_tests/demo/main.c src/canvas.c
-	$(CC) $(CFLAGS) $^ -o build/demo
+SRC_FILES = $(wildcard $(SRC_DIR)/*.c)
+OBJ_FILES = $(patsubst $(SRC_DIR)/%.c, $(BUILD_DIR)/%.o, $(SRC_FILES))
 
-test_math: tests/test_math.c src/math3d.c
-	$(CC) $(CFLAGS) -Iinclude $^ -o build/test_math -lm
+LIB = $(BUILD_DIR)/libtiny3d.a
 
-demo: visual_tests/demo/main.c src/canvas.c src/math3d.c src/renderer.c
-	$(CC) $(CFLAGS) -Iinclude $^ -o build/demo -lm
+# Demo files
+DEMO_SRC = visual_tests/demo/main.c
+DEMO_OBJ = $(BUILD_DIR)/demo_main.o
+DEMO_EXE = $(BUILD_DIR)/demo
 
-run:
-	./build/demo
+.PHONY: all clean run
 
+all: $(DEMO_EXE)
+
+$(BUILD_DIR):
+	@mkdir -p $(BUILD_DIR)
+
+# Compile object files from src/
+$(BUILD_DIR)/%.o: $(SRC_DIR)/%.c | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Archive static library
+$(LIB): $(OBJ_FILES)
+	ar rcs $@ $^
+
+# Compile demo executable
+$(DEMO_EXE): $(DEMO_SRC) $(LIB) | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c $(DEMO_SRC) -o $(DEMO_OBJ)
+	$(CC) $(CFLAGS) $(DEMO_OBJ) $(LIB) -lm -o $@
+
+# Run demo
+run: $(DEMO_EXE)
+	./$(DEMO_EXE)
+
+# Clean all build outputs
 clean:
-	rm -rf build/* output.pgm
+	rm -rf $(BUILD_DIR)

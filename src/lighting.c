@@ -1,8 +1,6 @@
 #include "lighting.h"
 
-float lambert_intensity(vec3_t edge_dir, vec3_t light_dir) {
-    vec3_t d = vec3_normalize_fast(edge_dir);
-    vec3_t l = vec3_normalize_fast(light_dir);
-    float dot = d.x * l.x + d.y * l.y + d.z * l.z;
-    return dot < 0.0f ? 0.0f : dot;
+float lambert(vec3_t edge_dir, vec3_t light_dir) {
+    float d = edge_dir.x * light_dir.x + edge_dir.y * light_dir.y + edge_dir.z * light_dir.z;
+    return d > 0 ? d : 0;
 }
