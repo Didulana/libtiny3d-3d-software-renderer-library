@@ -1,115 +1,125 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <math.h>
-
 #include "canvas.h"
 #include "math3d.h"
+#include "animation.h"
 #include "renderer.h"
 #include "lighting.h"
 #include "soccerball.h"
-#include "animation.h"
+#include <math.h>
+#include <stdio.h>
 
 #define WIDTH 512
 #define HEIGHT 512
 #define FRAME_COUNT 120
 
-// Cube primitive inline
-#define CUBE_VERTEX_COUNT 8
-#define CUBE_EDGE_COUNT 12
-void generate_cube(vec3_t* vertices, int edges[][2]) {
-    float s = 0.5f;
-    vertices[0] = vec3_init(-s, -s, -s);
-    vertices[1] = vec3_init( s, -s, -s);
-    vertices[2] = vec3_init( s,  s, -s);
-    vertices[3] = vec3_init(-s,  s, -s);
-    vertices[4] = vec3_init(-s, -s,  s);
-    vertices[5] = vec3_init( s, -s,  s);
-    vertices[6] = vec3_init( s,  s,  s);
-    vertices[7] = vec3_init(-s,  s,  s);
+// Cube vertices and edges
+static const vec3_t cube_vertices[] = {
+    {-0.5f,-0.5f,-0.5f,0,0,0}, {0.5f,-0.5f,-0.5f,0,0,0},
+    {0.5f,0.5f,-0.5f,0,0,0}, {-0.5f,0.5f,-0.5f,0,0,0},
+    {-0.5f,-0.5f,0.5f,0,0,0}, {0.5f,-0.5f,0.5f,0,0,0},
+    {0.5f,0.5f,0.5f,0,0,0}, {-0.5f,0.5f,0.5f,0,0,0}
+};
+static const int cube_edges[][2] = {
+    {0,1},{1,2},{2,3},{3,0},
+    {4,5},{5,6},{6,7},{7,4},
+    {0,4},{1,5},{2,6},{3,7}
+};
+#define CUBE_VERTEX_COUNT (sizeof(cube_vertices) / sizeof(vec3_t))
+#define CUBE_EDGE_COUNT   (sizeof(cube_edges)   / sizeof(cube_edges[0]))
 
-    int e[][2] = {
-        {0,1}, {1,2}, {2,3}, {3,0},
-        {4,5}, {5,6}, {6,7}, {7,4},
-        {0,4}, {1,5}, {2,6}, {3,7}
-    };
-    for (int i = 0; i < CUBE_EDGE_COUNT; ++i) {
-        edges[i][0] = e[i][0];
-        edges[i][1] = e[i][1];
-    }
-}
+// Pyramidal object (6-vertex fallback)
+static const vec3_t pyramid_vertices[] = {
+    { 0.0f,  0.5f,  0.0f, 0,0,0},
+    {-0.5f,  0.0f,  0.0f, 0,0,0},
+    { 0.0f, -0.5f,  0.0f, 0,0,0},
+    { 0.5f,  0.0f,  0.0f, 0,0,0},
+    { 0.0f,  0.0f,  0.5f, 0,0,0},
+    { 0.0f,  0.0f, -0.5f, 0,0,0}
+};
+static const int pyramid_edges[][2] = {
+    {0,1},{1,2},{2,3},{3,0},
+    {0,4},{1,4},{2,4},{3,4},
+    {0,5},{1,5},{2,5},{3,5}
+};
+#define PYRAMID_VERTEX_COUNT (sizeof(pyramid_vertices) / sizeof(vec3_t))
+#define PYRAMID_EDGE_COUNT   (sizeof(pyramid_edges)   / sizeof(pyramid_edges[0]))
 
-int main() {
+int main(void) {
+    canvas_t* canvas = canvas_create(WIDTH, HEIGHT);
+
+    mat4_t proj, view;
+    mat4_perspective(&proj, M_PI / 3.0f, (float)WIDTH / HEIGHT, 0.1f, 100.0f);
+    mat4_lookat(&view, vec3_init(0, 0, 6), vec3_init(0, 0, 0), vec3_init(0, 1, 0));
+
     vec3_t soccer_vertices[SOCCERBALL_VERTEX_COUNT];
     int soccer_edges[SOCCERBALL_EDGE_MAX][2];
     int soccer_edge_count = 0;
     generate_soccerball(soccer_vertices, soccer_edges, &soccer_edge_count);
 
-    vec3_t cube_vertices[CUBE_VERTEX_COUNT];
-    int cube_edges[CUBE_EDGE_COUNT][2];
-    generate_cube(cube_vertices, cube_edges);
-
-    float aspect = (float)WIDTH / HEIGHT;
-    mat4_t view, proj;
-    mat4_identity(&view);
-    mat4_frustum_asymmetric(&proj, -aspect, aspect, -1, 1, 1, 10);
-
-    vec3_t lights[2] = {
-        vec3_normalize_fast(vec3_init(1, 1.5f, -1)),
-        vec3_normalize_fast(vec3_init(-1, 1.0f, -1))
-    };
-
-    vec3_t p0 = vec3_init(-2, 0, -5), p1 = vec3_init(-2, 2, -5);
-    vec3_t p2 = vec3_init(2, 2, -5),  p3 = vec3_init(-2, 0, -5);
-    vec3_t q0 = vec3_init(2, 0, -5),  q1 = vec3_init(2, -2, -5);
-    vec3_t q2 = vec3_init(-2, -2, -5), q3 = vec3_init(2, 0, -5);
-
-    quat_t q_start = quat_from_axis_angle(vec3_init(1, 1, 0), 0.0f);
-    quat_t q_end   = quat_from_axis_angle(vec3_init(1, 1, 0), 2.0f * M_PI);
-
     for (int frame = 0; frame < FRAME_COUNT; ++frame) {
-        canvas_t* canvas = create_canvas(WIDTH, HEIGHT);
+        float t = (float)frame / (FRAME_COUNT - 1);  // ✅ ensures start == end pose
+        float theta = 2.0f * M_PI * t;
 
-        float raw_t = (float)frame / (FRAME_COUNT - 1);
-        float t = raw_t * raw_t * (3.0f - 2.0f * raw_t); // Smoothstep
+        canvas_clear(canvas, 0.0f);
 
-        quat_t q_rot = quat_slerp(q_start, q_end, t);
-        mat4_t rot;
-        quat_to_mat4(&rot, q_rot);
+        // 🔆 Light orbiting overhead
+        vec3_t light = vec3_normalize(vec3_init(cosf(theta), 1.0f, sinf(theta)));
+        vec3_t lights[1] = { light };
 
-        // Soccerball
-        mat4_t model1, trans1;
-        mat4_translate(&trans1, bezier(p0, p1, p2, p3, t));
-        mat4_multiply(&model1, &trans1, &rot);
-        render_wireframe(canvas, soccer_vertices, soccer_edges,
-                         SOCCERBALL_VERTEX_COUNT, soccer_edge_count,
-                         &model1, &view, &proj, lights[0]);
+        // 🧊 Cube (spin + orbit)
+        vec3_t cube_pos = vec3_init(cosf(theta) * 2.0f, -0.5f, sinf(theta) * 2.0f);
+        quat_t qx = quat_from_axis_angle(vec3_init(1, 0, 0), 2.0f * M_PI * t);
+        quat_t qy = quat_from_axis_angle(vec3_init(0, 1, 0), 4.0f * M_PI * t);
+        quat_t qz = quat_from_axis_angle(vec3_init(0, 0, 1), 1.5f * M_PI * t);
+        quat_t q_xy, q_total;
+        quat_multiply(&q_xy, &qy, &qx);
+        quat_multiply(&q_total, &qz, &q_xy);
+        mat4_t cube_rot, cube_trans, cube_model;
+        quat_to_mat4(&cube_rot, q_total);
+        mat4_translate(&cube_trans, cube_pos);
+        mat4_multiply(&cube_model, &cube_rot, &cube_trans);
+        render_wireframe_lit(canvas, cube_vertices, cube_edges, CUBE_VERTEX_COUNT, CUBE_EDGE_COUNT,
+                             &cube_model, &view, &proj, lights, 1, 0.2f);
 
-        // Cube
-        mat4_t model2, trans2;
-        mat4_translate(&trans2, bezier(q0, q1, q2, q3, t));
-        mat4_multiply(&model2, &trans2, &rot);
-        render_wireframe(canvas, cube_vertices, cube_edges,
-                         CUBE_VERTEX_COUNT, CUBE_EDGE_COUNT,
-                         &model2, &view, &proj, lights[1]);
+        // 🔺 Pyramid (counter-orbit + spin)
+        vec3_t pyr_pos = vec3_init(cosf(theta + M_PI) * 2.2f, 0.6f, sinf(theta + M_PI) * 2.2f);
+        quat_t q_pyr = quat_from_axis_angle(vec3_init(1, 0, 0), theta * 2.0f);
+        mat4_t pyr_rot, pyr_trans, pyr_model;
+        quat_to_mat4(&pyr_rot, q_pyr);
+        mat4_translate(&pyr_trans, pyr_pos);
+        mat4_multiply(&pyr_model, &pyr_rot, &pyr_trans);
+        render_wireframe_lit(canvas, pyramid_vertices, pyramid_edges, PYRAMID_VERTEX_COUNT, PYRAMID_EDGE_COUNT,
+                             &pyr_model, &view, &proj, lights, 1, 0.2f);
 
-        // Circular clipping
-        float cx = WIDTH / 2.0f, cy = HEIGHT / 2.0f;
-        float r = WIDTH / 2.0f;
-        for (int y = 0; y < HEIGHT; ++y)
-            for (int x = 0; x < WIDTH; ++x) {
-                float dx = x + 0.5f - cx;
-                float dy = y + 0.5f - cy;
-                if (dx*dx + dy*dy > r*r)
-                    canvas->data[y*WIDTH + x] = 0.0f;
-            }
+        // ⚽ Soccerball — Bezier orbit + smooth spin
+        vec3_t p0 = vec3_init(-1.2f, 0.0f, -5.0f);
+        vec3_t p1 = vec3_init(-1.2f, 0.8f, -5.0f);
+        vec3_t p2 = vec3_init(1.2f, 0.8f, -5.0f);
+        vec3_t p3 = vec3_init(-1.2f, 0.0f, -5.0f);
+        vec3_t ball_pos = bezier(p0, p1, p2, p3, t);
 
+        // Proper soccerball transformation
+        quat_t q_ball = quat_from_axis_angle(vec3_init(0, 1, 0), 2.0f * M_PI * t);
+        mat4_t ball_rot, ball_trans, ball_model;
+        quat_to_mat4(&ball_rot, q_ball);
+        mat4_translate(&ball_trans, ball_pos);
+        mat4_multiply(&ball_model, &ball_rot, &ball_trans);
+
+        // ⚽ soccer_vertices and soccer_edges already filled before the loop
+        render_wireframe_lit(canvas, soccer_vertices, soccer_edges,
+                            SOCCERBALL_VERTEX_COUNT, soccer_edge_count,
+                            &ball_model, &view, &proj, lights, 1, 0.2f);
+
+        // ☀️ Center sun crosshair
+        draw_line_f(canvas, WIDTH/2 - 3, HEIGHT/2, WIDTH/2 + 3, HEIGHT/2, 1.0f);
+        draw_line_f(canvas, WIDTH/2, HEIGHT/2 - 3, WIDTH/2, HEIGHT/2 + 3, 1.0f);
+
+        // 💾 Save frame into build/
         char filename[64];
-        sprintf(filename, "build/frame_%03d.pgm", frame);
+        snprintf(filename, sizeof(filename), "build/frame_%03d.pgm", frame);
         canvas_to_pgm(canvas, filename);
         printf("✅ Saved %s\n", filename);
-        free_canvas(canvas);
     }
 
-    printf("🎬 Synced animation: soccerball + cube complete.\n");
+    canvas_destroy(canvas);
     return 0;
 }

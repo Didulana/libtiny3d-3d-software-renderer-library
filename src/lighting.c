@@ -1,18 +1,17 @@
 #include "lighting.h"
+#include "math3d.h"
+#include <math.h>
 
 float lambert(vec3_t edge_dir, vec3_t light_dir) {
-    float d = edge_dir.x * light_dir.x + edge_dir.y * light_dir.y + edge_dir.z * light_dir.z;
-    return d > 0.0f ? d : 0.0f;
+    float dot = vec3_dot(edge_dir, light_dir);
+    return dot > 0.0f ? dot : 0.0f;
 }
 
-float lambert_multi(vec3_t edge_dir, vec3_t* lights, int light_count) {
+float lambert_multi(vec3_t edge_dir, const vec3_t* lights, int count) {
     float total = 0.0f;
-    for (int i = 0; i < light_count; ++i) {
-        float dot = edge_dir.x * lights[i].x +
-                    edge_dir.y * lights[i].y +
-                    edge_dir.z * lights[i].z;
+    for (int i = 0; i < count; ++i) {
+        float dot = vec3_dot(edge_dir, lights[i]);
         total += dot > 0.0f ? dot : 0.0f;
     }
-    float avg = total / light_count;
-    return avg > 1.0f ? 1.0f : avg;
+    return fminf(1.0f, total / count);
 }

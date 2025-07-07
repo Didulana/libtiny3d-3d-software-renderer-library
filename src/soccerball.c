@@ -7,6 +7,23 @@
 #define C3 2.1180339887498948482
 #define C4 2.4270509831248422723
 
+const vec3_t soccer_vertices[] = {
+    { 0.0f,  0.5f,  0.0f, 0, 0, 0 },
+    {-0.5f,  0.0f,  0.0f, 0, 0, 0 },
+    { 0.0f, -0.5f,  0.0f, 0, 0, 0 },
+    { 0.5f,  0.0f,  0.0f, 0, 0, 0 },
+    { 0.0f,  0.0f,  0.5f, 0, 0, 0 },
+    { 0.0f,  0.0f, -0.5f, 0, 0, 0 }
+};
+
+const int soccer_edges[][2] = {
+    {0,1},{1,2},{2,3},{3,0},
+    {0,4},{1,4},{2,4},{3,4},
+    {0,5},{1,5},{2,5},{3,5}
+};
+
+const int soccer_edge_count = sizeof(soccer_edges) / sizeof(soccer_edges[0]);
+
 static const float verts[60][3] = {
     {  0.5,  0.0,   C4}, {  0.5,  0.0,  -C4}, { -0.5,  0.0,   C4}, { -0.5,  0.0,  -C4},
     {  C4,  0.5,  0.0}, {  C4, -0.5,  0.0}, { -C4,  0.5,  0.0}, { -C4, -0.5,  0.0},
@@ -72,3 +89,4 @@ void generate_soccerball(vec3_t vertices[SOCCERBALL_VERTEX_COUNT],
         }
     }
 }
+
