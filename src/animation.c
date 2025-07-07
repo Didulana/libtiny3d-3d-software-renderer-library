@@ -1,5 +1,4 @@
 #include "animation.h"
-#include <math.h>
 
 vec3_t bezier(vec3_t p0, vec3_t p1, vec3_t p2, vec3_t p3, float t) {
     float u = 1.0f - t;
