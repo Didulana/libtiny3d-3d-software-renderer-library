@@ -66,7 +66,12 @@ int main(void) {
         vec3_t lights[1] = { light };
 
         // 🧊 Cube (spin + orbit)
-        vec3_t cube_pos = vec3_init(cosf(theta) * 2.0f, -0.5f, sinf(theta) * 2.0f);
+        // ⬅️ Cube Bezier path (left loop)
+        vec3_t c0 = vec3_init(-1.6f, -0.5f, -5.0f);
+        vec3_t c1 = vec3_init(-1.6f,  0.6f, -5.0f);
+        vec3_t c2 = vec3_init(-0.8f,  0.6f, -5.0f);
+        vec3_t c3 = vec3_init(-1.6f, -0.5f, -5.0f);
+        vec3_t cube_pos = bezier(c0, c1, c2, c3, t);
         quat_t qx = quat_from_axis_angle(vec3_init(1, 0, 0), 2.0f * M_PI * t);
         quat_t qy = quat_from_axis_angle(vec3_init(0, 1, 0), 4.0f * M_PI * t);
         quat_t qz = quat_from_axis_angle(vec3_init(0, 0, 1), 1.5f * M_PI * t);
@@ -81,7 +86,13 @@ int main(void) {
                              &cube_model, &view, &proj, lights, 1, 0.2f);
 
         // 🔺 Pyramid (counter-orbit + spin)
-        vec3_t pyr_pos = vec3_init(cosf(theta + M_PI) * 2.2f, 0.6f, sinf(theta + M_PI) * 2.2f);
+        // ➡️ Pyramid Bezier path (right loop)
+        vec3_t pyr_p0 = vec3_init(1.6f, 0.6f, -5.0f);
+        vec3_t pyr_p1 = vec3_init(1.6f, -0.6f, -5.0f);
+        vec3_t pyr_p2 = vec3_init(0.8f, -0.6f, -5.0f);
+        vec3_t pyr_p3 = vec3_init(1.6f, 0.6f, -5.0f);
+        vec3_t pyr_pos = bezier(pyr_p0, pyr_p1, pyr_p2, pyr_p3, t);
+
         quat_t q_pyr = quat_from_axis_angle(vec3_init(1, 0, 0), theta * 2.0f);
         mat4_t pyr_rot, pyr_trans, pyr_model;
         quat_to_mat4(&pyr_rot, q_pyr);
